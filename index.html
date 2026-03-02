@@ -7,30 +7,62 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;700;900&display=swap');
-        body { font-family: 'Lexend', sans-serif; background-color: #fffaf5; }
+        body { font-family: 'Lexend', sans-serif; background-color: #fffaf5; padding-bottom: 100px; }
         .food-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .food-card { background: white; border-radius: 18px; overflow: hidden; border: 1px solid #f3f4f6; display: flex; flex-direction: column; height: 100%; }
-        .food-card img { width: 100%; height: 110px; object-fit: cover; background: #eee; }
-        .btn-order { background: #f97316; color: white; font-weight: 700; width: 100%; padding: 10px; border-radius: 12px; font-size: 13px; transition: 0.2s; }
-        .btn-order:disabled { background: #d1d5db; cursor: not-allowed; opacity: 0.8; }
+        .food-card img { width: 100%; height: 110px; object-fit: cover; }
+        .btn-add { background: #f97316; color: white; font-weight: 700; width: 100%; padding: 8px; border-radius: 10px; font-size: 12px; }
+        
+        /* Carrinho Flutuante */
+        #carrinho-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: #1e293b; color: white; padding: 15px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        
+        /* Modal */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: flex-end; }
+        .modal-content { background: white; width: 100%; border-radius: 25px 25px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; }
     </style>
 </head>
-<body class="pb-20">
+<body>
     <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md p-4 border-b flex justify-between items-center">
         <h1 class="text-2xl font-black text-orange-600">sandla.</h1>
         <div id="loja-status-header"></div>
     </nav>
 
     <main class="p-4 max-w-2xl mx-auto">
-        <input type="text" id="inputBusca" placeholder="O que vamos comer hoje?" class="w-full p-4 rounded-2xl border mb-6 outline-none focus:ring-2 focus:ring-orange-500 shadow-sm">
+        <input type="text" id="inputBusca" placeholder="O que vamos comer?" class="w-full p-4 rounded-2xl border mb-6 outline-none shadow-sm">
         
-        <div id="alerta-fechado" class="hidden bg-red-50 border border-red-100 p-4 rounded-2xl text-center mb-6">
-            <p class="text-red-600 font-bold text-xs" id="texto-horario-retorno"></p>
-        </div>
-
-        <div id="lista-produtos" class="food-grid">
-            </div>
+        <div id="lista-produtos" class="food-grid"></div>
     </main>
+
+    <div id="carrinho-bar" class="hidden">
+        <div class="flex flex-col">
+            <span id="cart-count" class="text-[10px] text-slate-400 font-bold uppercase">0 itens no carrinho</span>
+            <span id="cart-total" class="text-lg font-black">R$ 0,00</span>
+        </div>
+        <button onclick="abrirCheckout()" class="bg-orange-500 px-6 py-2 rounded-xl font-bold text-sm">VER CARRINHO</button>
+    </div>
+
+    <div id="modal-checkout" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-black">Meu Pedido</h2>
+                <button onclick="fecharCheckout()" class="text-slate-400 font-bold">FECHAR</button>
+            </div>
+
+            <div id="itens-checkout" class="space-y-4 mb-6 border-b pb-6">
+                </div>
+
+            <div class="space-y-3">
+                <h3 class="font-bold text-sm text-slate-500 uppercase">Dados de Entrega</h3>
+                <input type="text" id="order-nome" placeholder="Seu Nome" class="w-full p-3 border rounded-xl bg-slate-50">
+                <input type="text" id="order-rua" placeholder="Rua e Número" class="w-full p-3 border rounded-xl bg-slate-50">
+                <input type="text" id="order-ref" placeholder="Ponto de Referência" class="w-full p-3 border rounded-xl bg-slate-50">
+            </div>
+
+            <button onclick="finalizarPedido()" class="w-full bg-green-600 text-white font-black py-4 rounded-2xl mt-8 shadow-lg">
+                ENVIAR PEDIDO VIA WHATSAPP
+            </button>
+        </div>
+    </div>
 
     <script type="module" src="app.js"></script>
 </body>
