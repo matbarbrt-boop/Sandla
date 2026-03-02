@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// --- CONFIGURAÇÃO FIREBASE ---
 const firebaseConfig = {
     apiKey: "AIzaSyD_QSgu2NVX9MBVHtYwtmmnp6Jiq-rgCGo",
     authDomain: "oiahrf072.firebaseapp.com",
@@ -17,218 +16,129 @@ const produtosRef = collection(db, "produtos");
 const configDoc = doc(db, "configuracoes", "horarios");
 
 let produtosLocal = [];
+let carrinho = []; // Armazena os itens: {id, nome, preco, qtd}
 let configSemana = [];
-const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const TELEFONE = "5513988250532";
 
-// --- LOGICA DE HORÁRIOS ---
-async function carregarHorarios() {
-    try {
-        const snap = await getDoc(configDoc);
-        if (snap.exists() && snap.data().grade) {
-            configSemana = snap.data().grade;
-        } else {
-            configSemana = diasSemana.map(dia => ({ dia, abre: "18:00", fecha: "23:00", fechado: false }));
-        }
-        renderGradeAdmin();
-        verificarStatus();
-    } catch (e) { console.error("Erro ao carregar:", e); }
+// --- FUNÇÕES DO CARRINHO ---
+
+window.adicionarAoCarrinho = (id, nome, preco) => {
+    const itemExistente = carrinho.find(item => item.id === id);
+    if (itemExistente) {
+        itemExistente.qtd++;
+    } else {
+        carrinho.push({ id, nome, preco: parseFloat(preco), qtd: 1 });
+    }
+    atualizarBarraCarrinho();
+    renderLoja(); // Para atualizar os números nos botões
+};
+
+window.removerDoCarrinho = (id) => {
+    const index = carrinho.findIndex(item => item.id === id);
+    if (index !== -1) {
+        carrinho[index].qtd--;
+        if (carrinho[index].qtd <= 0) carrinho.splice(index, 1);
+    }
+    atualizarBarraCarrinho();
+    renderLoja();
+};
+
+function atualizarBarraCarrinho() {
+    const bar = document.getElementById('carrinho-bar');
+    const totalEl = document.getElementById('cart-total');
+    const countEl = document.getElementById('cart-count');
+
+    if (carrinho.length > 0) {
+        bar.classList.remove('hidden');
+        const total = carrinho.reduce((acc, item) => acc + (item.preco * item.qtd), 0);
+        const itensT = carrinho.reduce((acc, item) => acc + item.qtd, 0);
+        totalEl.innerText = `R$ ${total.toFixed(2)}`;
+        countEl.innerText = `${itensT} ${itensT === 1 ? 'item' : 'itens'} no carrinho`;
+    } else {
+        bar.classList.add('hidden');
+    }
 }
 
-function renderGradeAdmin() {
-    const container = document.getElementById('grade-horarios');
-    if (!container) return;
-    container.innerHTML = configSemana.map((h, i) => `
-        <div class="flex items-center justify-between text-[11px] border-b py-2">
-            <span class="w-16 font-bold uppercase text-slate-500">${h.dia}</span>
-            <input type="time" value="${h.abre || '18:00'}" onchange="updateH(${i},'abre',this.value)" class="border p-1 rounded" ${h.fechado ? 'disabled' : ''}>
-            <input type="time" value="${h.fecha || '23:00'}" onchange="updateH(${i},'fecha',this.value)" class="border p-1 rounded" ${h.fechado ? 'disabled' : ''}>
-            <label class="flex items-center gap-1">
-                <input type="checkbox" ${h.fechado ? 'checked' : ''} onchange="updateH(${i},'fechado',this.checked)">
-                <span class="text-red-500 font-bold">FOLGA</span>
-            </label>
+window.abrirCheckout = () => {
+    const modal = document.getElementById('modal-checkout');
+    const lista = document.getElementById('itens-checkout');
+    modal.style.display = 'flex';
+
+    lista.innerHTML = carrinho.map(item => `
+        <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl">
+            <div>
+                <p class="font-bold text-sm">${item.nome}</p>
+                <p class="text-xs text-slate-500">${item.qtd}x R$ ${item.preco.toFixed(2)}</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="removerDoCarrinho('${item.id}'); abrirCheckout()" class="bg-white border w-8 h-8 rounded-full font-bold">-</button>
+                <span class="font-bold text-sm">${item.qtd}</span>
+                <button onclick="adicionarAoCarrinho('${item.id}', '${item.nome}', ${item.preco}); abrirCheckout()" class="bg-white border w-8 h-8 rounded-full font-bold">+</button>
+            </div>
         </div>
     `).join('');
-}
-
-window.updateH = (i, campo, valor) => {
-    configSemana[i][campo] = valor;
-    renderGradeAdmin();
 };
 
-window.salvarHorariosSemana = async () => {
-    try {
-        await setDoc(configDoc, { grade: configSemana });
-        alert("✅ Horários atualizados com sucesso!");
-        location.reload();
-    } catch (e) { alert("Erro ao salvar! Verifique as regras (Rules) do Firebase."); }
+window.fecharCheckout = () => {
+    document.getElementById('modal-checkout').style.display = 'none';
 };
 
-// --- STATUS DA LOJA (ABERTO/FECHADO) ---
-function verificarStatus() {
-    const agora = new Date();
-    const diaIdx = agora.getDay();
-    const horaMinuto = agora.getHours().toString().padStart(2, '0') + ":" + agora.getMinutes().toString().padStart(2, '0');
-    
-    const hoje = configSemana[diaIdx] || { abre: "18:00", fecha: "23:00", fechado: true };
-    const hAbre = hoje.abre || "18:00";
-    const hFecha = hoje.fecha || "23:00";
+window.finalizarPedido = () => {
+    const nome = document.getElementById('order-nome').value;
+    const rua = document.getElementById('order-rua').value;
+    const ref = document.getElementById('order-ref').value;
 
-    const estaAberta = !hoje.fechado && (horaMinuto >= hAbre && horaMinuto <= hFecha);
+    if (!nome || !rua) return alert("Por favor, preencha nome e endereço!");
 
-    const elStatus = document.getElementById('loja-status-header');
-    if (elStatus) {
-        elStatus.innerHTML = estaAberta 
-            ? `<span class="bg-green-100 text-green-600 px-3 py-1 rounded-full font-bold text-[10px] shadow-sm">● ABERTO</span>` 
-            : `<span class="bg-red-100 text-red-600 px-3 py-1 rounded-full font-bold text-[10px] shadow-sm">○ FECHADO</span>`;
-    }
+    let texto = `*NOVO PEDIDO - SANDLA*\n\n`;
+    texto += `👤 *Nome:* ${nome}\n`;
+    texto += `📍 *Endereço:* ${rua}\n`;
+    if(ref) texto += `🏁 *Referência:* ${ref}\n\n`;
+    texto += `🛒 *ITENS:*\n`;
 
-    const alertF = document.getElementById('alerta-fechado');
-    const txtRetorno = document.getElementById('texto-horario-retorno');
-    if (alertF && txtRetorno) {
-        if (!estaAberta) {
-            alertF.classList.remove('hidden');
-            txtRetorno.innerText = hoje.fechado ? "Hoje estamos de folga!" : `Abrimos das ${hAbre} às ${hFecha}`;
-        } else {
-            alertF.classList.add('hidden');
-        }
-    }
-    return estaAberta;
-}
+    carrinho.forEach(item => {
+        texto += `• ${item.qtd}x ${item.nome} (R$ ${(item.preco * item.qtd).toFixed(2)})\n`;
+    });
 
-// --- GESTÃO DE PRODUTOS ---
-onSnapshot(produtosRef, (snap) => {
-    produtosLocal = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderLoja();
-    if (document.getElementById('admin-lista-produtos')) renderAdmin();
-});
+    const total = carrinho.reduce((acc, item) => acc + (item.preco * item.qtd), 0);
+    texto += `\n💰 *TOTAL: R$ ${total.toFixed(2)}*`;
 
-// Comprime imagem para não estourar o limite do Firebase
-const processarImagem = () => {
-    const img = document.getElementById('img-preview');
-    if (!img.src || !img.src.startsWith('data:image')) return "";
-    const canvas = document.createElement('canvas');
-    const maxW = 400;
-    const scale = maxW / img.naturalWidth;
-    canvas.width = maxW;
-    canvas.height = img.naturalHeight * scale;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.7);
+    window.open(`https://api.whatsapp.com/send?phone=${TELEFONE}&text=${encodeURIComponent(texto)}`, '_blank');
 };
 
-const form = document.getElementById('form-produto');
-if (form) {
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('edit-id').value;
-        const btn = document.getElementById('btn-submit');
-        
-        const dados = {
-            nome: document.getElementById('nome').value.trim(),
-            descricao: document.getElementById('descricao').value.trim(),
-            preco: document.getElementById('preco').value,
-            precoPromo: document.getElementById('precoPromo').value || 0,
-            imagem: processarImagem(),
-            emEstoque: document.getElementById('emEstoque').checked
-        };
+// --- RENDERIZAÇÃO DA LOJA (ATUALIZADA) ---
 
-        try {
-            if(btn) btn.innerText = "Salvando...";
-            if (!id) await addDoc(produtosRef, dados);
-            else await updateDoc(doc(db, "produtos", id), dados);
-            
-            form.reset();
-            document.getElementById('img-preview').classList.add('hidden');
-            document.getElementById('edit-id').value = "";
-            if(btn) btn.innerText = "SALVAR PRODUTO";
-            alert("✅ Salvo!");
-        } catch (err) {
-            alert("Erro! Certifique-se de que a imagem não é muito pesada.");
-            if(btn) btn.innerText = "SALVAR PRODUTO";
-        }
-    };
-}
-
-const inputImg = document.getElementById('imagemFile');
-if (inputImg) {
-    inputImg.onchange = (e) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const pre = document.getElementById('img-preview');
-            pre.src = reader.result;
-            pre.classList.remove('hidden');
-        };
-        reader.readAsDataURL(e.target.files[0]);
-    };
-}
-
-// --- RENDERIZAÇÃO DA LOJA ---
 function renderLoja(filtro = "") {
     const container = document.getElementById('lista-produtos');
     if (!container) return;
-    const aberta = verificarStatus();
-
+    
     container.innerHTML = produtosLocal.filter(p => p.nome.toLowerCase().includes(filtro)).map(p => {
         const precoF = p.precoPromo > 0 ? p.precoPromo : p.preco;
-        const disp = p.emEstoque && aberta;
+        const itemNoCart = carrinho.find(c => c.id === p.id);
+        const qtd = itemNoCart ? itemNoCart.qtd : 0;
+
         return `
-            <div class="food-card ${disp ? '' : 'opacity-50'}">
+            <div class="food-card ${p.emEstoque ? '' : 'opacity-50'}">
                 <img src="${p.imagem || ''}" loading="lazy">
                 <div class="p-3 flex flex-col flex-grow">
                     <h3 class="font-bold text-[11px] truncate uppercase text-slate-700">${p.nome}</h3>
                     <p class="text-orange-600 font-black text-sm mt-1">R$ ${precoF}</p>
-                    <button onclick="window.enviarPedido('${p.nome}', '${precoF}')" class="btn-order mt-2" ${disp ? '' : 'disabled'}>
-                        ${aberta ? (p.emEstoque ? 'PEDIR' : 'FALTA') : 'FECHADO'}
-                    </button>
+                    
+                    <div class="mt-2">
+                        ${qtd > 0 ? `
+                            <div class="flex items-center justify-between bg-orange-50 rounded-xl p-1 border border-orange-200">
+                                <button onclick="removerDoCarrinho('${p.id}')" class="w-8 h-8 font-black text-orange-600">-</button>
+                                <span class="font-bold text-orange-600">${qtd}</span>
+                                <button onclick="adicionarAoCarrinho('${p.id}', '${p.nome}', ${precoF})" class="w-8 h-8 font-black text-orange-600">+</button>
+                            </div>
+                        ` : `
+                            <button onclick="adicionarAoCarrinho('${p.id}', '${p.nome}', ${precoF})" class="btn-add">ADICIONAR</button>
+                        `}
+                    </div>
                 </div>
             </div>`;
     }).join('');
 }
 
-window.enviarPedido = (n, p) => {
-    const msg = encodeURIComponent(`Olá! Gostaria de um *${n}* (R$ ${p})`);
-    window.open(`https://api.whatsapp.com/send?phone=${TELEFONE}&text=${msg}`, '_blank');
-};
-
-function renderAdmin() {
-    const container = document.getElementById('admin-lista-produtos');
-    container.innerHTML = produtosLocal.map(p => `
-        <div class="flex justify-between items-center p-3 bg-white border rounded-xl mb-2 shadow-sm">
-            <span class="text-[10px] font-bold uppercase truncate w-32">${p.nome}</span>
-            <div class="flex gap-3">
-                <button onclick="window.editarProd('${p.id}')" class="text-blue-500 font-bold text-[10px]">EDITAR</button>
-                <button onclick="window.removerProd('${p.id}')" class="text-red-500 font-bold text-[10px] uppercase">Apagar</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-window.removerProd = async (id) => { if(confirm("Apagar?")) await deleteDoc(doc(db, "produtos", id)); };
-
-window.editarProd = (id) => {
-    const p = produtosLocal.find(x => x.id === id);
-    document.getElementById('nome').value = p.nome;
-    document.getElementById('descricao').value = p.descricao;
-    document.getElementById('preco').value = p.preco;
-    document.getElementById('precoPromo').value = p.precoPromo;
-    document.getElementById('edit-id').value = p.id;
-    document.getElementById('emEstoque').checked = p.emEstoque;
-    const img = document.getElementById('img-preview');
-    img.src = p.imagem; img.classList.remove('hidden');
-    window.scrollTo({top: 0, behavior: 'smooth'});
-};
-
-// --- START ---
-carregarHorarios();
-
-document.addEventListener('DOMContentLoaded', () => {
-    const btnSalvarH = document.getElementById('btn-salvar-horarios');
-    if (btnSalvarH) btnSalvarH.onclick = window.salvarHorariosSemana;
-    
-    const btnToggleH = document.getElementById('btn-toggle-horarios');
-    if (btnToggleH) btnToggleH.onclick = () => document.getElementById('secao-horarios').classList.toggle('hidden');
-
-    const busca = document.getElementById('inputBusca');
-    if (busca) busca.oninput = (e) => renderLoja(e.target.value.toLowerCase());
-});
+// (Manter funções de Firebase: onSnapshot, carregarHorarios, etc. que enviamos antes)
+// ...
