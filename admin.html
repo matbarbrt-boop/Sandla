@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin | Sandla</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 p-4 pb-10">
+    <div class="max-w-xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <h2 class="text-2xl font-bold text-slate-800">Sandla Admin</h2>
+            <a href="index.html" class="bg-white px-4 py-2 rounded-xl border font-bold text-sm">Ver Loja</a>
+        </header>
+
+        <section class="mb-8">
+            <button id="btn-toggle-horarios" class="w-full bg-white p-4 rounded-2xl border font-bold flex justify-between">
+                🕒 Horários de Funcionamento <span>▼</span>
+            </button>
+            <div id="secao-horarios" class="hidden bg-white p-4 border-x border-b rounded-b-2xl">
+                <div id="grade-horarios" class="space-y-2"></div>
+                <button id="btn-salvar-horarios" class="w-full bg-slate-900 text-white py-3 rounded-xl mt-4 font-bold">Salvar Grade</button>
+            </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-3xl border shadow-sm mb-8">
+            <h3 class="font-bold mb-4">Novo / Editar Item</h3>
+            <form id="form-produto" class="space-y-4">
+                <input type="hidden" id="edit-id">
+                <input type="text" id="nome" placeholder="Nome do lanche" class="w-full p-3 border rounded-xl" required>
+                <textarea id="descricao" placeholder="Descrição/Ingredientes" class="w-full p-3 border rounded-xl"></textarea>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" step="0.01" id="preco" placeholder="Preço R$" class="p-3 border rounded-xl" required>
+                    <input type="number" step="0.01" id="precoPromo" placeholder="Promoção R$" class="p-3 border rounded-xl">
+                </div>
+                <div class="border-2 border-dashed p-4 rounded-xl text-center">
+                    <input type="file" id="imagemFile" accept="image/*" class="text-xs">
+                    <img id="img-preview" src="" class="hidden h-32 mx-auto mt-4 rounded-lg">
+                </div>
+                <label class="flex items-center gap-2 font-bold">
+                    <input type="checkbox" id="emEstoque" checked class="w-5 h-5"> Tem no estoque?
+                </label>
+                <button type="submit" id="btn-submit" class="w-full bg-orange-500 text-white font-bold py-4 rounded-2xl">Salvar Produto</button>
+            </form>
+        </section>
+
+        <h3 class="font-bold text-slate-400 mb-4 text-xs uppercase">Itens Cadastrados</h3>
+        <div id="admin-lista-produtos" class="space-y-3"></div>
+    </div>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

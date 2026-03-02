@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700&display=swap');
+
+:root {
+    --brand-orange: #f97316;
+    --brand-dark: #1e1b4b;
+    --bg-cream: #fffaf5;
+}
+
+body { font-family: 'Lexend', sans-serif; background-color: var(--bg-cream); color: var(--brand-dark); margin: 0; }
+
+/* Grid de 2 colunas no celular */
+#lista-produtos {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+/* 3 colunas no computador */
+@media (min-width: 1024px) {
+    #lista-produtos { grid-template-columns: repeat(3, 1fr); gap: 24px; }
+}
+
+.food-card {
+    background: white; border-radius: 16px; border: 1px solid #fee2e2;
+    overflow: hidden; display: flex; flex-direction: column; height: 100%;
+}
+
+.food-card img {
+    height: 120px; width: 100%; object-fit: cover;
+}
+
+@media (min-width: 768px) {
+    .food-card img { height: 180px; }
+}
+
+.btn-order {
+    background: var(--brand-orange); color: white; font-weight: 700;
+    border-radius: 10px; padding: 10px; font-size: 0.8rem;
+    width: 100%; border: none; cursor: pointer; transition: 0.2s;
+}
+
+.btn-order:active { transform: scale(0.95); }
+
+.search-bar {
+    width: 100%; padding: 12px 20px; border-radius: 14px;
+    border: 1px solid #e2e8f0; background: white; outline: none;
+}
